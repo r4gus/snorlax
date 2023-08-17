@@ -31,6 +31,8 @@ pub fn request(
     };
     errdefer req.deinit();
 
+    try req.headers.append("Accept", "application/json");
+
     if (client.authentication.cookie) |cookie| {
         const cookie_value = try cookie.stringify(client.allocator);
         defer client.allocator.free(cookie_value);

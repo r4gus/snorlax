@@ -36,14 +36,18 @@ pub fn build(b: *std.Build) !void {
     // running `zig build`).
     b.installArtifact(lib);
 
-    const authenticator = b.addExecutable(.{
-        .name = "connecting",
-        .root_source_file = .{ .path = "examples/connecting.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-    authenticator.addModule("snorlax", snorlax_module);
-    b.installArtifact(authenticator);
+    // Examples
+    var examples = Examples.init(b, snorlax_module, optimize);
+    examples.install(b);
+
+    //const authenticator = b.addExecutable(.{
+    //    .name = "connecting",
+    //    .root_source_file = .{ .path = "examples/connecting.zig" },
+    //    .target = target,
+    //    .optimize = optimize,
+    //});
+    //authenticator.addModule("snorlax", snorlax_module);
+    //b.installArtifact(authenticator);
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
@@ -61,3 +65,33 @@ pub fn build(b: *std.Build) !void {
     const test_step = b.step("test", "Run library tests");
     test_step.dependOn(&run_main_tests.step);
 }
+
+fn root() []const u8 {
+    return comptime (std.fs.path.dirname(@src().file) orelse ".") ++ "/";
+}
+
+pub const Examples = struct {
+    connecting: *std.Build.LibExeObjStep,
+
+    pub fn init(b: *std.Build, module: *std.Build.Module, optimize: std.builtin.OptimizeMode) Examples {
+        var ret: Examples = undefined;
+        inline for (@typeInfo(Examples).Struct.fields) |field| {
+            const path = comptime root() ++ "examples/" ++ field.name ++ ".zig";
+
+            @field(ret, field.name) = b.addExecutable(.{
+                .name = field.name,
+                .root_source_file = .{ .path = path },
+                .optimize = optimize,
+            });
+            @field(ret, field.name).addModule("snorlax", module);
+        }
+
+        return ret;
+    }
+
+    pub fn install(examples: *Examples, b: *std.Build) void {
+        inline for (@typeInfo(Examples).Struct.fields) |field| {
+            b.installArtifact(@field(examples, field.name));
+        }
+    }
+};

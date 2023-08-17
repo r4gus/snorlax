@@ -7,6 +7,7 @@ const Allocator = std.mem.Allocator;
 const Client = std.http.Client;
 const Uri = std.Uri;
 const Cookie = @import("cookie.zig").Cookie;
+const database = @import("database.zig");
 
 const Self = @This();
 
@@ -91,4 +92,22 @@ pub fn checkCookie(self: *Self) !void {
         std.log.info("no authentication cookie set; requesting new cookie", .{});
         try authentication.requestCookie(self);
     }
+}
+
+/// Create a new database with the given `name`
+pub fn createDatabase(self: *Self, name: []const u8) !void {
+    self.checkCookie() catch {};
+    return try database.createDatabase(self, name);
+}
+
+/// Delete the database specified by `name`
+pub fn deleteDatabase(self: *Self, name: []const u8) !void {
+    self.checkCookie() catch {};
+    return try database.deleteDatabase(self, name);
+}
+
+/// Delete the database specified by `name`
+pub fn createDocument(self: *Self, name: []const u8, obj: anytype) !void {
+    self.checkCookie() catch {};
+    return try database.createDocument(self, name, obj);
 }

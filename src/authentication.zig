@@ -2,6 +2,8 @@
 
 const std = @import("std");
 const Snorlax = @import("Snorlax.zig");
+const Cookie = @import("cookie.zig").Cookie;
+const request = @import("request.zig").request;
 
 /// Response of a (cookie) authentication request
 pub const CookieAuthenticationResponse = struct {
@@ -20,9 +22,7 @@ pub const CookieAuthenticationRequest = struct {
 };
 
 pub fn requestCookie(client: *Snorlax) !void {
-    const _uri = try client.allocBuildUri("_session");
-    defer client.allocator.free(_uri);
-    const uri = std.Uri.parse(_uri) catch unreachable;
+    std.log.info("requestCookie: requesting authorization cookie", .{});
 
     const _args = CookieAuthenticationRequest{
         .name = client.authentication.name,
@@ -31,31 +31,19 @@ pub fn requestCookie(client: *Snorlax) !void {
     const args = try std.json.stringifyAlloc(client.allocator, _args, .{});
     defer client.allocator.free(args);
 
-    var req = client.client.request(.POST, uri, .{ .allocator = client.allocator }, .{}) catch |err| {
-        std.log.err("requestCookie: unable to establish connection to '{s}' ({any})", .{
-            _uri,
-            err,
-        });
-        return error.ConnectionFailure;
-    };
+    var req = try request(client, .POST, "_session", args);
     defer req.deinit();
-
-    try req.headers.append("Content-Type", "application/json");
-    req.transfer_encoding = .chunked;
-    try req.start();
-    try req.writeAll(args);
-    try req.finish();
-    try req.wait();
 
     if (req.response.status == .ok) {
         if (req.response.headers.getFirstValue("Set-Cookie")) |_cookie| {
             if (client.authentication.cookie != null) {
                 // Free old cookie
-                client.allocator.free(client.authentication.cookie.?);
+                client.authentication.cookie.?.deinit();
             }
 
             // Set new authentication cookie
-            client.authentication.cookie = try client.allocator.dupe(u8, _cookie);
+            client.authentication.cookie = try Cookie.parse(_cookie, client.allocator);
+            client.authentication.cookie_ts = std.time.timestamp();
         } else {
             std.log.err("requestCookie: missing authorization cookie in headers", .{});
             return error.MissingAuthorizationCookie;
@@ -66,4 +54,6 @@ pub fn requestCookie(client: *Snorlax) !void {
         });
         return error.AuthenticationFailure;
     }
+
+    std.log.info("requestCookie: authorization cookie request successful", .{});
 }

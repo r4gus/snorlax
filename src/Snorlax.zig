@@ -6,6 +6,7 @@ const authentication = @import("authentication.zig");
 const Allocator = std.mem.Allocator;
 const Client = std.http.Client;
 const Uri = std.Uri;
+const Cookie = @import("cookie.zig").Cookie;
 
 const Self = @This();
 
@@ -22,7 +23,9 @@ authentication: struct {
     /// Password
     password: []const u8,
     /// Authentication cookie
-    cookie: ?[]u8 = null,
+    cookie: ?Cookie = null,
+    /// Time the cookie was set
+    cookie_ts: i64 = 0,
 },
 client: Client,
 allocator: Allocator,
@@ -48,15 +51,16 @@ pub fn init(
 
     // Request the first cookie. This is a first check to make
     // sure everything works fine.
-    try authentication.requestCookie(&self);
+    try self.checkCookie();
 
     return self;
 }
 
 pub fn deinit(self: *Self) void {
-    if (self.authentication.cookie != null) {
-        self.allocator.free(self.authentication.cookie.?);
+    if (self.authentication.cookie) |*cookie| {
+        cookie.deinit();
     }
+    self.authentication.cookie = null;
     // self.client.deinit(); setfault???
 }
 
@@ -71,4 +75,20 @@ pub fn allocBuildUri(self: *Self, path: []const u8) ![]const u8 {
         self.port,
         path,
     });
+}
+
+pub fn checkCookie(self: *Self) !void {
+    // Request a new cookie if required
+    if (self.authentication.cookie) |cookie| {
+        if (cookie.max_age) |max_age| {
+            if (std.time.timestamp() - self.authentication.cookie_ts >= max_age) {
+                // Time is up, request a new cookie
+                std.log.info("authentication cookie has expired; requesting new cookie", .{});
+                try authentication.requestCookie(self);
+            }
+        }
+    } else {
+        std.log.info("no authentication cookie set; requesting new cookie", .{});
+        try authentication.requestCookie(self);
+    }
 }

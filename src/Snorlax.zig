@@ -111,3 +111,14 @@ pub fn createDocument(self: *Self, name: []const u8, obj: anytype) !void {
     self.checkCookie() catch {};
     return try database.createDocument(self, name, obj);
 }
+
+pub fn find(
+    self: *Self,
+    name: []const u8,
+    comptime T: type,
+    obj: anytype,
+    allocator: Allocator,
+) !database.FindResponse(T) {
+    self.checkCookie() catch {};
+    return try database.find(self, name, T, obj, allocator);
+}

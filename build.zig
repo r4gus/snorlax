@@ -72,6 +72,7 @@ fn root() []const u8 {
 
 pub const Examples = struct {
     connecting: *std.Build.LibExeObjStep,
+    find: *std.Build.LibExeObjStep,
 
     pub fn init(b: *std.Build, module: *std.Build.Module, optimize: std.builtin.OptimizeMode) Examples {
         var ret: Examples = undefined;

@@ -139,7 +139,19 @@ pub fn update(
     self: *Self,
     db: []const u8,
     doc: anytype,
-) !void {
+    allocator: ?std.mem.Allocator,
+) !?document.Response {
     self.checkCookie() catch {};
-    return try document.update(self, db, doc);
+    return try document.update(self, db, doc, allocator);
+}
+
+pub fn delete(
+    self: *Self,
+    db: []const u8,
+    docid: []const u8,
+    rev: []const u8,
+    allocator: ?std.mem.Allocator,
+) !?document.Response {
+    self.checkCookie() catch {};
+    return try document.delete(self, db, docid, rev, allocator);
 }

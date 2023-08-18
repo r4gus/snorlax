@@ -78,5 +78,17 @@ pub fn main() !void {
 
     // 5. Update
     m2.servings = 11;
-    try client.update("fido", m2);
+
+    // On success, CouchDB will return the id and revision of the document.
+    // If you need those information, you can pass a allocator to update(),
+    // but don't forget to call deinit() to free the memory of id and rev.
+    const ur = (try client.update("fido", m2, allocator)).?;
+    defer ur.deinit(allocator);
+
+    // 6. Delete
+
+    // We need the id and rev of the document we want to delete, but we're
+    // not interested in the return value. This is why we pass null instead
+    // of an allocator.
+    _ = try client.delete("fido", ur.id, ur.rev, null);
 }

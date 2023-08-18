@@ -60,5 +60,6 @@ Currently the library supports the following operations:
 * Find a document based on _selectors_ by using the `find` function
 * Read a specific document by using the `read` function
 * Update a existing document by using the `update` function
+* Delete a existing document by using the `delete` function
 
 Check out the [examples](examples) folder for an overfiew on how to use the library.

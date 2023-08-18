@@ -4,6 +4,18 @@ const Snorlax = @import("Snorlax.zig");
 const Error = @import("Error.zig");
 const request = @import("request.zig").request;
 
+pub const Response = struct {
+    /// Document ID
+    id: []const u8,
+    /// Revision MVCC token
+    rev: []const u8,
+
+    pub fn deinit(self: *const @This(), a: std.mem.Allocator) void {
+        a.free(self.id);
+        a.free(self.rev);
+    }
+};
+
 /// Returns document by the specified docid from the specified db.
 pub fn read(
     client: *Snorlax,
@@ -50,7 +62,8 @@ pub fn update(
     client: *Snorlax,
     db: []const u8,
     doc: anytype,
-) !void {
+    allocator: ?std.mem.Allocator,
+) !?Response {
     const T = @TypeOf(doc);
     const TInf = @typeInfo(T);
 
@@ -89,6 +102,19 @@ pub fn update(
 
     if (req.response.status == .created or req.response.status == .accepted) {
         std.log.info("update: document successfully updated", .{});
+
+        if (allocator) |a| {
+            var mem = try req.reader().readAllAlloc(client.allocator, 8192);
+            defer client.allocator.free(mem);
+
+            var parsed_struct = try std.json.parseFromSliceLeaky(Response, a, mem, .{
+                .ignore_unknown_fields = true,
+                .allocate = .alloc_always,
+            });
+
+            return parsed_struct;
+        }
+        return null;
     } else {
         if (req.response.status == .bad_request) {
             std.log.err("update: Invalid request body or parameters", .{});
@@ -101,7 +127,60 @@ pub fn update(
             return error.NotFound;
         } else if (req.response.status == .conflict) {
             std.log.err("update: Document with the specified ID already exists or specified revision is not latest for target document", .{});
+            return error.Conflict;
+        }
+
+        return error.Failure;
+    }
+}
+
+pub fn delete(
+    client: *Snorlax,
+    db: []const u8,
+    docid: []const u8,
+    rev: []const u8,
+    allocator: ?std.mem.Allocator,
+) !?Response {
+    std.log.info("delete: Deleting document with id {s} from {s}", .{ docid, db });
+
+    var path = try std.fmt.allocPrint(client.allocator, "{s}/{s}?rev={s}", .{ db, docid, rev });
+    defer client.allocator.free(path);
+
+    var req = try request(client, .DELETE, path, null);
+    defer req.deinit();
+
+    if (req.response.status == .ok or req.response.status == .accepted) {
+        if (req.response.status == .ok) {
+            std.log.info("delete: Document with id {s} successfully removed", .{docid});
+        } else {
+            std.log.info("delete: Requset for document with id {s} accepted, but changes are not yet stored on disk", .{docid});
+        }
+
+        if (allocator) |a| {
+            var mem = try req.reader().readAllAlloc(client.allocator, 8192);
+            defer client.allocator.free(mem);
+
+            var parsed_struct = try std.json.parseFromSliceLeaky(Response, a, mem, .{
+                .ignore_unknown_fields = true,
+                .allocate = .alloc_always,
+            });
+
+            return parsed_struct;
+        }
+        return null;
+    } else {
+        if (req.response.status == .bad_request) {
+            std.log.err("delete: Invalid request body or parameters", .{});
+            return error.InvalidFormat;
+        } else if (req.response.status == .unauthorized) {
+            std.log.err("delete: Write permission required", .{});
+            return error.Unauthorized;
+        } else if (req.response.status == .not_found) {
+            std.log.err("delete: Specified database or document ID doesn’t exists", .{});
             return error.NotFound;
+        } else if (req.response.status == .conflict) {
+            std.log.err("delete: Specified revision is not latest for target document", .{});
+            return error.Conflict;
         }
 
         return error.Failure;

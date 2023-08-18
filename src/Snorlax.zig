@@ -134,3 +134,12 @@ pub fn read(
     self.checkCookie() catch {};
     return try document.read(self, T, db, docid, allocator);
 }
+
+pub fn update(
+    self: *Self,
+    db: []const u8,
+    doc: anytype,
+) !void {
+    self.checkCookie() catch {};
+    return try document.update(self, db, doc);
+}

@@ -55,7 +55,7 @@ pub fn main() !void {
     };
 
     // 5. Read
-    const m2 = client.read(Meal, "fido", "ab39fe0993049b84cfa81acd6ebad09d", allocator) catch |err| {
+    var m2 = client.read(Meal, "fido", "ab39fe0993049b84cfa81acd6ebad09d", allocator) catch |err| {
         std.debug.print("unable to read document with id {s} ({any})\n", .{
             "ab39fe0993049b84cfa81acd6ebad09d",
             err,
@@ -75,4 +75,8 @@ pub fn main() !void {
         m2.subtitle,
         m2.title,
     });
+
+    // 5. Update
+    m2.servings = 11;
+    try client.update("fido", m2);
 }

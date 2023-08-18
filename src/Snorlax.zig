@@ -8,6 +8,7 @@ const Client = std.http.Client;
 const Uri = std.Uri;
 const Cookie = @import("cookie.zig").Cookie;
 const database = @import("database.zig");
+const document = @import("document.zig");
 
 const Self = @This();
 
@@ -121,4 +122,15 @@ pub fn find(
 ) !database.FindResponse(T) {
     self.checkCookie() catch {};
     return try database.find(self, name, T, obj, allocator);
+}
+
+pub fn read(
+    self: *Self,
+    comptime T: type,
+    db: []const u8,
+    docid: []const u8,
+    allocator: std.mem.Allocator,
+) !T {
+    self.checkCookie() catch {};
+    return try document.read(self, T, db, docid, allocator);
 }

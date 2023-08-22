@@ -64,28 +64,28 @@ pub fn update(
     doc: anytype,
     allocator: ?std.mem.Allocator,
 ) !?Response {
-    const T = @TypeOf(doc);
-    const TInf = @typeInfo(T);
+    //const T = @TypeOf(doc);
+    //const TInf = @typeInfo(T);
 
-    var id: ?[]const u8 = null;
-    switch (TInf) {
-        .Struct => |S| {
-            inline for (S.fields) |Field| {
-                if (std.mem.eql(u8, "_id", Field.name)) {
-                    id = if (doc._id) |_id| _id else return error.Invalid;
-                    break;
-                }
-            }
-        },
-        else => {
-            std.log.err("update: data type is not a struct", .{});
-            return error.InvalidDataType;
-        },
-    }
-    if (id == null) {
-        std.log.err("update: id field missing", .{});
-        return error.MissingField;
-    }
+    var id: ?[]const u8 = doc._id;
+    //switch (TInf) {
+    //    .Struct => |S| {
+    //        inline for (S.fields) |Field| {
+    //            if (std.mem.eql(u8, "_id", Field.name)) {
+    //                id = if (doc._id) |_id| _id else return error.Invalid;
+    //                break;
+    //            }
+    //        }
+    //    },
+    //    else => {
+    //        std.log.err("update: data type is not a struct", .{});
+    //        return error.InvalidDataType;
+    //    },
+    //}
+    //if (id == null) {
+    //    std.log.err("update: id field missing", .{});
+    //    return error.MissingField;
+    //}
 
     std.log.info("update: update document with id {s} for {s}", .{ id.?, db });
 
